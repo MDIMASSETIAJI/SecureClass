@@ -2,6 +2,14 @@
 
 **SecureClass** adalah platform pengelolaan tugas dan dokumen akademik dengan sistem keamanan berlapis (*defense-in-depth*) yang mengintegrasikan autentikasi biometrik wajah berbasis kecerdasan buatan (*Deep Learning ArcFace*), *USB Dongle Challenge-Response* (ECDSA P-256), *Super Encryption* (Vigenère + AES-256-GCM), enkripsi berkas *ChaCha20-Poly1305*, steganografi *Least Significant Bit* (LSB), dan rantai audit *tamper-evident hash chain* (SHA-256).
 
+## Anggota
+
+| NIM | Nama |
+| --- | --- |
+| 123240239 | Aziz Nabil Putra Darmawan |
+| 123240240 | Muhammad Dimas Setiaji |
+| 123240254 | Ajrun Ramadhan |
+
 ---
 
 ## 1. Arsitektur Sistem & Diagram Alur
