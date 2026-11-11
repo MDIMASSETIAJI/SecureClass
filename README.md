@@ -117,9 +117,9 @@ flowchart LR
 ```mermaid
 flowchart LR
     F[Berkas Asli] --> CC[ChaCha20-Poly1305]
-    K[Master File Key 256-bit] --> CC
+    K[Master File Key 256-bit / Password] --> CC
     N[Unique Random Nonce 96-bit] --> CC
-    CC --> EF[Ciphertext Berkas (.enc)]
+    CC --> EF[Ciphertext Berkas .enc / Amburadul]
     CC --> AT[Poly1305 MAC 128-bit]
     CC --> SHA[SHA-256 Checksum]
 ```
@@ -132,9 +132,9 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | **Password Hashing** | **Argon2id** | $m=19456\text{ KB}$, $t=2$, $p=1$ | Perlindungan tahan memori (*memory-hard*) terhadap ASIC/GPU cracking dan serangan *side-channel cache-timing*. |
 | **USB Dongle Auth** | **ECDSA P-256** | Kurva NIST prime256v1, SHA-256 | Autentikasi *challenge-response*. Kunci privat tidak pernah keluar dari peramban web (*Web Crypto API*). |
-| **Pesan Akademik** | **Super Encryption** | Vigenère + AES-256-GCM | Lapisan substitusi polialfabetik klasik diperkuat enkripsi modern dengan otentikasi data terikat (AEAD). |
-| **Enkripsi Berkas** | **ChaCha20-Poly1305** | IETF RFC 8439, 96-bit Nonce, 128-bit Tag | Enkripsi berkas dokumen dipisahkan dari pesan teks. Nonce unik dibuat acak per berkas; penggunaan ulang nonce dicegah secara mutlak. |
-| **Data Biometrik** | **AES-256-GCM** | Kunci master biometrik 256-bit, IV 96-bit | Vektor fitur 512-dimensi disimpan dalam keadaan terenkripsi. Foto mentah tidak disimpan. |
+| **Pesan Akademik** | **Super Encryption** | Vigenère + AES-256-GCM | Lapisan substitusi polialfabetik klasik diperkuat enkripsi modern dengan otentikasi data terikat (AEAD). Dilengkapi tombol mandiri **ENCRYPT** dan **DECRYPT**. |
+| **Enkripsi Berkas** | **ChaCha20-Poly1305** | IETF RFC 8439, 96-bit Nonce, 128-bit Tag | Enkripsi berkas dokumen dipisahkan dari pesan teks. Dilengkapi proteksi password saat buka berkas serta opsi unduh berkas biner amburadul (`.enc`). |
+| **Data Biometrik** | **AES-256-GCM** | Kunci master biometrik 256-bit, IV 96-bit | Vektor fitur 512-dimensi disimpan dalam keadaan terenkripsi. Foto mentah (*raw image*) tidak disimpan. |
 | **Pesan Database** | **AES-256-GCM** | IV 12-byte acak, Tag 16-byte | Pesan penting/rahasia dienkripsi sebelum persistensi ke SQLite. |
 | **Steganografi** | **LSB + AES-256-GCM** | Format PNG, Magic header `SCST`, RGB bit-0 | Pesan dienkripsi AES-256-GCM terlebih dahulu sebelum disisipkan ke LSB kanal warna citra PNG. |
 | **Rantai Audit** | **Tamper-Evident Hash Chain** | SHA-256 | Rantai hash kriptografis `SHA256(index + timestamp + prevHash + dataJson)`. Setiap modifikasi ilegal terdeteksi seketika. |
@@ -158,102 +158,119 @@ Database telah dilengkapi tiga akun demonstrasi beserta berkas kunci dongle yang
 ## 4. Panduan Menjalankan Aplikasi
 
 ### Kebutuhan Sistem
-- **Node.js**: v18+ (Direkomendasikan v20+)
-- **Python**: v3.10+ (Direkomendasikan v3.11 - v3.13)
-- **Webcam**: Kamera aktif pada peramban untuk verifikasi biometrik wajah.
+* **Node.js**: v18+ (Direkomendasikan v20+)
+* **Python**: v3.10+ (Direkomendasikan v3.11 - v3.13)
+* **Webcam**: Kamera aktif pada peramban untuk verifikasi biometrik wajah.
 
-### Langkah 1: Menjalankan Layanan Python Face Recognition
-Buka terminal pertama:
+---
+
+### Cara 1: Menjalankan Secara Lokal (Paling Mudah)
+
+Cukup klik dua kali berkas **`start.bat`** di folder utama proyek, atau jalankan perintah berikut lewat dua jendela terminal:
+
+#### Terminal 1 — Layanan Python Face Recognition
 ```bash
 cd face-service
 python run.py
 ```
-Layanan akan aktif pada `http://127.0.0.1:8000`. Layanan ini dilindungi token `X-Internal-Token` dan hanya dapat dipanggil oleh backend Next.js.
+*Layanan aktif pada `http://127.0.0.1:8000`, diproteksi token rahasia `X-Internal-Token`.*
 
-### Langkah 2: Menyiapkan Database & Menjalankan Next.js Web
-Buka terminal kedua:
+#### Terminal 2 — Next.js Web Application
 ```bash
 cd web
 
-# 1. Pastikan dependensi telah terpasang
+# 1. Pasang dependensi
 npm install
 
-# 2. Sinkronisasi database SQLite
+# 2. Sinkronisasi database SQLite & seed akun
 npx prisma db push
-
-# 3. Jalankan seed data akun bawaan
 node prisma/seed.js
 
-# 4. Jalankan server pengembangan Next.js
+# 3. Jalankan server Next.js
 npm run dev
 ```
 Buka peramban di: `http://localhost:3000`.
 
-### Langkah 3: Menjalankan Pengujian Otomatis (Unit & Integration Tests)
+---
+
+### Cara 2: Menjalankan Pengujian Otomatis (Unit & Integration Tests)
 ```bash
 cd web
 npm test
 ```
-Seluruh 14 rangkaian pengujian kriptografi dan integrasi database (Argon2id, Vigenère, AES-256-GCM, Super Encryption, ChaCha20-Poly1305, ECDSA P-256, Multi-User Dongle Appending, LSB Steganography, dan Hash Chain Linkage) akan divalidasi dengan status 100% lulus.
+Seluruh 14 rangkaian pengujian kriptografi dan integrasi database (Argon2id, Vigenère, AES-256-GCM, Super Encryption, ChaCha20-Poly1305, ECDSA P-256, Multi-User Dongle Appending, LSB Steganography, dan Hash Chain Linkage) divalidasi dengan status **100% PASS**.
 
 ---
 
-## 5. Cara Penggunaan Fitur
+### Cara 3: Menghubungkan Demo Online untuk Dosen (Ngrok / Cloudflare Tunnel)
+Jika ingin mendemokan aplikasi ke dosen atau diakses dari HP secara online tanpa kehilangan fitur flashdisk USB fisik:
+```bash
+ngrok http 3000
+```
+Ngrok akan memberikan URL publik internet (misal `https://secureclass.ngrok-free.app`) yang terhubung langsung ke laptop Anda lengkap dengan hardware USB dan kamera webcam!
+
+---
+
+### Cara 4: Panduan Deploy ke Vercel
+1. Pastikan kode sudah di-push ke GitHub.
+2. Di dashboard Vercel, pilih **Import Project**.
+3. **PENTING:** Atur **Root Directory** ke folder `web`.
+4. Vercel akan otomatis mendeteksi skrip `vercel-build` yang menjalankan `prisma generate` dan inisialisasi basis data SQLite.
+5. Konfigurasi Environment Variables di Vercel menggunakan nilai dari `web/.env.example`.
+
+---
+
+## 5. Panduan Fitur Aplikasi
 
 ### A. Pendaftaran Akun Baru 3-Factor Auth (`/register`)
 1. **Langkah 1 (Kredensial Akun):** Masukkan Username, Email, Nama Lengkap, Role, dan Password yang kuat. Password di-hash menggunakan Argon2id.
 2. **Langkah 2 (Pemasangan Dongle):** Colokkan flashdisk USB Anda. Sistem mendeteksi drive USB secara otomatis dan menyematkan pasangan kunci ECDSA P-256 ke dalam berkas `dongle.key`.
-3. **Langkah 3 (Perekaman Biometrik Wajah):** Webcam nyata (un-mirrored) mendeteksi liveness wajah dan mengekstraksi vektor embedding 512 dimensi via ArcFace, yang kemudian dienkripsi menggunakan AES-256-GCM ke database SQLite.
+3. **Langkah 3 (Perekaman Biometrik Wajah):** Webcam mendeteksi liveness wajah dan mengekstraksi vektor embedding 512 dimensi via ArcFace, yang kemudian dienkripsi menggunakan AES-256-GCM ke database SQLite.
 
 ### B. Dukungan Multi-User Dongle (Banyak Pengguna dalam 1 Flashdisk)
-- Format berkas `dongle.key` menggunakan arsitektur **Version 2.0 Multi-Key Store**.
-- Setiap kali pengguna baru mendaftar atau menulis kunci ke flashdisk yang sama, sistem **tidak menimpa kunci lama**, melainkan menambahkan kunci baru ke dalam daftar `keys`.
-- Contoh: Jika 3 orang mendaftar menggunakan flashdisk yang sama, maka `dongle.key` memuat 3 kunci privat independen untuk masing-masing akun. Saat login, sistem otomatis mencocokkan kunci akun yang sedang login.
+* Format berkas `dongle.key` menggunakan arsitektur **Version 2.0 Multi-Key Store**.
+* Setiap kali pengguna baru mendaftar atau menulis kunci ke flashdisk yang sama, sistem **tidak menimpa kunci lama**, melainkan menambahkan kunci baru ke dalam daftar `keys`.
+* Saat login, sistem otomatis mencocokkan kunci akun yang sedang login.
 
-### C. Perekaman Webcam Nyata (Un-Mirrored Orientation)
-- Tampilan webcam pada halaman Login maupun Registrasi telah disesuaikan dengan orientasi spasial dunia nyata (tidak dicerminkan/un-mirrored).
-- Frame citra yang diambil untuk ekstraksi liveness FFT dan embedding ArcFace memiliki keselarasan orientasi yang identik dengan tampilan layar pengguna.
-
-### D. Penegakan Hardware USB Dongle (FAT32)
+### C. Penegakan Hardware USB Dongle (FAT32) & Heartbeat Guard
 1. **Pemasangan Kunci ke Flashdisk Fisik:**
-   - Masuk ke halaman **Pengaturan Keamanan & 3FA** (`/security-settings`) atau buka formulir pada login Faktor 2.
-   - Pilih drive flashdisk Anda (misal `E:\`) lalu klik **"Tulis dongle.key ke Flashdisk"** (atau unduh berkas `dongle.key` dan salin ke root direktori flashdisk USB Anda).
-   - Sistem menghasilkan kunci kriptografi ECDSA P-256 baru. Kunci publik disimpan di database SQLite, sedangkan materi kunci privat disimpan eksklusif di dalam flashdisk USB.
-2. **Penegakan Hardware Lock (Aplikasi Tidak Bisa Dijalankan Tanpa Flashdisk):**
-   - **Saat Login Faktor 2:** Sistem secara otomatis memindai seluruh drive komputer (`D:\` s/d `Z:\`) mencari flashdisk fisik yang memuat `dongle.key`. Jika flashdisk tidak dicolokkan, login **terkunci rapat** dan menampilkan status: *"Flashdisk USB Belum Dicolokkan!"*. Begitu flashdisk Anda dicolokkan, sistem mendeteksi drive secara *real-time* dan melakukan verifikasi challenge-response otomatis.
-   - **Saat Menggunakan Aplikasi (Hardware Heartbeat Guard):** Jika flashdisk Anda dicabut dari port USB saat Anda sedang berada di dashboard atau halaman manapun, layar aplikasi seketika terkunci dengan tampilan layar penuh: *"⚠️ FLASHDISK USB TERCABUT! Akses dikunci hingga flashdisk dicolokkan kembali"*. Segera setelah flashdisk dicolokkan kembali, aplikasi otomatis terbuka kembali.
+   * Buka halaman **Pengaturan Keamanan & 3FA** (`/security-settings`).
+   * Pilih drive flashdisk Anda (misal `E:\`) lalu klik **"Tulis dongle.key ke Flashdisk"** (atau unduh berkas `dongle.key` dan salin ke root flashdisk).
+2. **Penegakan Hardware Lock:**
+   * **Saat Login Faktor 2:** Sistem memindai drive komputer mencari flashdisk yang memuat `dongle.key`. Jika flashdisk tidak dicolokkan, login terkunci.
+   * **Saat Menggunakan Aplikasi (Hardware Heartbeat Guard):** Jika flashdisk dicabut dari port USB saat Anda sedang di dashboard, layar seketika terkunci penuh: *"⚠️ FLASHDISK USB TERCABUT! Akses dikunci hingga flashdisk dicolokkan kembali"*.
 
-### B. Enrollment & Verifikasi Biometrik Wajah
+### D. Enrollment & Verifikasi Biometrik Wajah (ArcFace + Liveness)
 1. Pada login Faktor 3 (atau halaman pengaturan), berikan izin kamera webcam.
 2. Centang persetujuan privasi biometrik (*Privacy Consent*).
-3. Posisikan wajah tepat di dalam lingkaran panduan oval.
-4. Sistem memeriksa liveness (anti-spoofing) dan mengekstrak embedding ArcFace 512-dimensi.
+3. Posisikan wajah tepat di dalam panduan oval.
+4. Sistem memeriksa liveness (anti-spoofing via 2D FFT, Laplacian variance, dan YCrCb chrominance) serta mengekstrak embedding ArcFace 512-dimensi.
 5. Embedding dienkripsi dengan AES-256-GCM ke database. Citra foto mentah langsung dimusnahkan dari memori.
 
-### C. Pengiriman Pesan Terenkripsi (Super Encryption: Dua Tombol Encrypt & Decrypt)
+### E. Pengiriman Pesan Terenkripsi (Super Encryption: Dua Tombol Encrypt & Decrypt)
 1. Buka menu **Pesan Terenkripsi (Super)** (`/messaging`).
 2. **Operasi 1 — Tombol ENCRYPT:**
-   - Masukkan isi pesan dan tentukan **Kunci Enkripsi (Vigenère Key)** Anda (misal: `KRIPTO2026`).
-   - Klik tombol **"ENCRYPT (Uji)"** untuk melihat pratinjau transformasi matematis (Layer 1 Vigenère dan Layer 2 AES-256-GCM) atau klik **"ENCRYPT & Kirim"** untuk mengirim pesan ke kontak.
+   * Masukkan isi pesan dan tentukan **Kunci Enkripsi (Vigenère Key)** Anda (misal: `KRIPTO2026`).
+   * Klik tombol **"ENCRYPT (Uji)"** untuk melihat pratinjau transformasi matematis secara langsung (Layer 1 Vigenère dan Layer 2 AES-256-GCM) atau klik **"ENCRYPT & Kirim"** untuk mengirim pesan ke kontak.
 3. **Operasi 2 — Tombol DECRYPT:**
-   - Pada kotak masuk (atau tab alat dekripsi), klik tombol **"DECRYPT"**.
-   - Pengguna **wajib memasukkan kunci dekripsi** yang cocok. Jika kunci salah, dekripsi ditolak; jika benar, plaintext asli terbuka dengan status integritas Auth Tag valid.
+   * Pada kotak masuk (atau tab alat dekripsi), klik tombol **"DECRYPT"**.
+   * Pengguna **wajib memasukkan kunci dekripsi** yang cocok. Jika kunci salah, dekripsi ditolak; jika benar, plaintext asli terbuka dengan status integritas Auth Tag valid.
 
-### D. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Dua Opsi Pembuktian)
+### F. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Dua Opsi Pembuktian)
 1. Buka menu **Enkripsi Berkas (ChaCha20)** (`/file-encryption`).
 2. Unggah dokumen apa saja (PDF, DOCX, ZIP, TXT).
 3. **Opsi 1 — Proteksi Password Berkas:** Anda dapat memasukkan password pengaman berkas. Saat berkas hendak dibuka/didekripsi kembali, sistem wajib meminta password ini. Jika password salah, validasi tag Poly1305 akan menolak dekripsi.
 4. **Opsi 2 — Isi Berkas Amburadul:** Sistem menyediakan tombol **"Unduh File .enc (Isi Amburadul)"**. Jika berkas ini dibuka langsung di Notepad atau aplikasi pembaca teks, isinya 100% berupa karakter acak tak terbaca / ciphertext biner ChaCha20 murni sebagai bukti nyata enkripsi.
 5. Pada tab **Daftar & Dekripsi**, pengguna dapat memasukkan password untuk memulihkan berkas kembali ke kondisi semula.
 
-### E. Steganografi LSB (Penyisipan Pesan ke PNG)
+### G. Steganografi LSB (Penyisipan Pesan ke PNG)
 1. Buka menu **Steganografi LSB** (`/steganography`).
 2. Masukkan citra pembawa PNG dan pesan rahasia.
 3. Pesan dienkripsi dengan AES-256-GCM, lalu bit payload disisipkan ke LSB kanal warna RGB.
 4. Unduh citra stego yang dihasilkan.
 5. Pada tab **Ekstraksi**, unggah citra stego untuk memulihkan pesan rahasia.
 
-### F. Inspeksi & Simulasi Perusakan Blockchain (Tamper-Evidence)
+### H. Inspeksi & Simulasi Perusakan Blockchain (Tamper-Evidence)
 1. Buka menu **Blockchain (Hash Chain)** (`/blockchain`).
 2. Klik **"Validasi Rantai Hash"** untuk memverifikasi seluruh blok audit.
 3. Sebagai admin, klik tombol **"Simulasikan Modifikasi Blok #1"** untuk menyuntikkan muatan ilegal.
@@ -267,6 +284,3 @@ Seluruh 14 rangkaian pengujian kriptografi dan integrasi database (Argon2id, Vig
 1. **USB Flashdisk FAT32:** Flashdisk biasa bukanlah *Hardware Security Module (HSM)* atau *Secure Enclave* bersertifikasi FIPS. Berkas `dongle.key` pada flashdisk secara fisik dapat disalin jika flashdisk dipinjamkan atau dicuri. Oleh sebab itu, SecureClass menerapkan *Defense-in-Depth*: kepemilikan dongle wajib digabungkan dengan pengetahuan Password Argon2id dan keberadaan fisik Biometrik Wajah Liveness.
 2. **Tamper-Evident Hash Chain:** Rantai hash dalam satu database SQLite dapat dihitung ulang oleh pengguna dengan hak akses DBA/root. Hash chain menjamin *tamper-evidence* (pendeteksian manipulasi oleh aplikasi), bukan imutabilitas terdesentralisasi tanpa izin.
 3. **Privasi Biometrik (Right to be Forgotten):** Pengguna dapat menghapus seluruh profil biometrik wajah terenkripsi mereka kapan saja melalui tombol *Hapus Data Biometrik* pada Pengaturan Keamanan.
-
-#   S e c u r e C l a s s  
- 
