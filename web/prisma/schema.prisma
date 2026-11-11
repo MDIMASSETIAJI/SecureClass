@@ -1,0 +1,317 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  username     String    @unique
+  fullName     String
+  role              String    @default("MAHASISWA") // ADMIN, DOSEN, MAHASISWA
+  passwordHash      String
+  passwordChangedAt DateTime?
+  avatar            String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Biometrics & Dongle Factor Credentials
+  dongles      Dongle[]
+  faceProfile  FaceProfile?
+  sessions     Session[]
+  challenges   DongleChallenge[]
+
+  // Academic Relations
+  coursesTaught      Course[]           @relation("LecturerCourses")
+  courseEnrollments  CourseEnrollment[]
+  createdTasks       AcademicTask[]     @relation("CreatedTasks")
+  submissions        TaskSubmission[]   @relation("StudentSubmissions")
+  uploadedDocs       AcademicDocument[]
+  encryptedFiles     EncryptedFile[]
+
+  // Messaging & Steganography
+  sentMessages       SecureMessage[]    @relation("SentMessages")
+  receivedMessages   SecureMessage[]    @relation("ReceivedMessages")
+  stegoRecords       SteganographyRecord[]
+
+  // Security & Audit
+  auditLogs          AuditLog[]
+  blockchainEntries  BlockchainBlock[]
+}
+
+model Session {
+  id                   String    @id @default(uuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token                String    @unique
+  expiresAt            DateTime
+  userAgent            String?
+  ipAddress            String?
+  
+  // 3-Factor Multi-step verification state
+  factor1Password      Boolean   @default(false)
+  factor2Dongle        Boolean   @default(false)
+  factor3Face          Boolean   @default(false)
+  isFullyAuthenticated Boolean   @default(false)
+
+  createdAt            DateTime  @default(now())
+  revokedAt            DateTime?
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Dongle {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dongleId     String    @unique // e.g. DGL-UUID
+  publicKeyPem String    // ECDSA P-256 public key (SPKI PEM or JWK string)
+  keyVersion   Int       @default(1)
+  label        String    @default("USB Flash Drive Key")
+  status       String    @default("ACTIVE") // ACTIVE, REVOKED
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+  @@index([dongleId])
+}
+
+model DongleChallenge {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge  String    @unique // 32-byte cryptographically random hex nonce
+  status     String    @default("PENDING") // PENDING, USED, EXPIRED
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([challenge])
+  @@index([userId])
+}
+
+model FaceProfile {
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 512-dim ArcFace embedding encrypted with AES-256-GCM
+  encryptedEmbedding String    // Base64 ciphertext of JSON array
+  iv                 String    // 12-byte initialization vector (hex)
+  authTag            String    // 16-byte GCM authentication tag (hex)
+  keyVersion         Int       @default(1)
+  
+  livenessConfidence Float     @default(0.95)
+  enrolledAt         DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  status             String    @default("ACTIVE") // ACTIVE, REVOKED
+}
+
+model Course {
+  id          String             @id @default(uuid())
+  code        String             @unique // e.g. IF301, CS202
+  name        String
+  description String?
+  lecturerId  String
+  lecturer    User               @relation("LecturerCourses", fields: [lecturerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  enrollments CourseEnrollment[]
+  tasks       AcademicTask[]
+  documents   AcademicDocument[]
+
+  @@index([lecturerId])
+}
+
+model CourseEnrollment {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([courseId, studentId])
+  @@index([courseId])
+  @@index([studentId])
+}
+
+model AcademicTask {
+  id          String           @id @default(uuid())
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String
+  creator     User             @relation("CreatedTasks", fields: [createdById], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  deadline    DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  submissions TaskSubmission[]
+
+  @@index([courseId])
+  @@index([createdById])
+}
+
+model TaskSubmission {
+  id              String         @id @default(uuid())
+  taskId          String
+  task            AcademicTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User           @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+  encryptedFileId String
+  encryptedFile   EncryptedFile  @relation(fields: [encryptedFileId], references: [id], onDelete: Cascade)
+  notes           String?
+  grade           Float?
+  feedback        String?
+  submittedAt     DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([taskId, studentId])
+  @@index([taskId])
+  @@index([studentId])
+  @@index([encryptedFileId])
+}
+
+model AcademicDocument {
+  id              String         @id @default(uuid())
+  courseId        String
+  course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uploadedById    String
+  uploader        User           @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  encryptedFileId String
+  encryptedFile   EncryptedFile  @relation(fields: [encryptedFileId], references: [id], onDelete: Cascade)
+  isProtected     Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+
+  @@index([courseId])
+  @@index([uploadedById])
+  @@index([encryptedFileId])
+}
+
+model EncryptedFile {
+  id              String             @id @default(uuid())
+  originalName    String
+  mimeType        String
+  originalSize    Int
+  encryptedSize   Int
+  storagePath     String             // Relative path in uploads/encrypted/
+  
+  // ChaCha20-Poly1305 Cryptographic Material
+  algorithm       String             @default("ChaCha20-Poly1305")
+  nonce           String             // 12-byte unique nonce (hex)
+  authTag         String             // 16-byte Poly1305 authentication tag (hex)
+  keyVersion      Int                @default(1)
+  checksumSha256  String             // SHA-256 of the ciphertext for integrity checks
+  isPasswordProtected Boolean        @default(false)
+  passwordSalt    String?            // Random salt for key derivation
+  
+  uploadedById    String
+  uploader        User               @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+
+  submissions     TaskSubmission[]
+  documents       AcademicDocument[]
+
+  @@index([uploadedById])
+}
+
+model SecureMessage {
+  id               String    @id @default(uuid())
+  senderId         String
+  sender           User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId       String
+  receiver         User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  // Super Encryption (Vigenère + AES-256-GCM) or Direct AES-256-GCM
+  ciphertext       String    // Base64 encrypted payload
+  iv               String    // 12-byte initialization vector (hex)
+  authTag          String    // 16-byte GCM authentication tag (hex)
+  algorithm        String    @default("VIGENERE+AES-256-GCM")
+  vigenereKeyHint  String?   // Obfuscated / hashed key indicator
+  keyVersion       Int       @default(1)
+  
+  isImportant      Boolean   @default(false)
+  isEncrypted      Boolean   @default(true)
+  readAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model SteganographyRecord {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalFileName String
+  stegoFileName    String
+  messageLength    Int
+  
+  // Cryptographic details of embedded payload
+  algorithm        String    @default("AES-256-GCM+LSB")
+  iv               String
+  authTag          String
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model BlockchainBlock {
+  id           String    @id @default(uuid())
+  index        Int       @unique
+  timestamp    DateTime  @default(now())
+  action       String    // LOGIN, TASK_CREATE, SUBMISSION, DOC_ENCRYPT, MSG_SEND
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  targetId     String?
+  dataJson     String    // Canonical JSON representation of the payload
+  previousHash String    // SHA-256 hash of block (n-1)
+  currentHash  String    // SHA-256(index + timestamp + previousHash + dataJson)
+  createdAt    DateTime  @default(now())
+
+  @@index([index])
+  @@index([userId])
+  @@index([currentHash])
+}
+
+model LoginAttempt {
+  id             String    @id @default(uuid())
+  usernameOrEmail String
+  ipAddress      String?
+  userAgent      String?
+  factor         String    // PASSWORD, DONGLE, FACE
+  success        Boolean
+  failureReason  String?
+  timestamp      DateTime  @default(now())
+
+  @@index([usernameOrEmail])
+  @@index([timestamp])
+}
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  category  String    // AUTH, CRYPTO, ACADEMIC, SYSTEM
+  details   String    // JSON description
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime  @default(now())
+
+  @@index([userId])
+  @@index([category])
+  @@index([timestamp])
+}

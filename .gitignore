@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# TypeScript cache
+*.tsbuildinfo
+next-env.d.ts
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Uploaded Files & Temporary Storage
+web/uploads/encrypted/*
+!web/uploads/encrypted/.gitkeep
+
+# SQLite database local files
+*.db
+*.db-journal
+web/prisma/dev.db
+web/prisma/dev.db-journal
+
+# Environment Secrets
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
