@@ -134,19 +134,6 @@ export default function BlockchainPage() {
           </div>
         </div>
 
-        {/* Security Architecture Clarification Notice */}
-        <div className="p-4 rounded-2xl bg-white border-2 border-gray-200 text-xs text-[#777777] space-y-2">
-          <p className="font-black text-[#3C3C3C]">
-            Prinsip Tamper-Evident Hash Chain vs Blockchain Terdesentralisasi:
-          </p>
-          <p className="leading-relaxed">
-            Sistem ini menggunakan struktur <strong>tamper-evident hash chain</strong> berbasis fungsi hash kriptografi SHA-256 (bukan blockchain terdesentralisasi berbasis Proof-of-Work/Proof-of-Stake antar simpul terdistribusi). Setiap blok mengikat secara matematis blok sebelumnya melalui formula: <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[#3C3C3C]">SHA-256(index + timestamp + previousHash + dataJson)</code>.
-          </p>
-          <p className="italic text-[11px] text-gray-500">
-            * Keterbatasan Keamanan: Hash chain di dalam satu database SQLite dapat ditulis ulang oleh pengguna dengan hak istimewa tingkat tinggi (misal: DBA atau root OS). Oleh karena itu, hash chain memberikan pendeteksian tamper (*tamper-evidence*), bukan imutabilitas absolut tanpa batas.
-          </p>
-        </div>
-
         {/* Validation Status Banner */}
         {validation && (
           <div
