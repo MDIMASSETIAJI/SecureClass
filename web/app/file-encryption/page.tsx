@@ -87,8 +87,8 @@ export default function FileEncryptionPage() {
     }
   };
 
-  // UNDUH BERKAS AMBURADUL (.enc)
-  const downloadAmburadul = (fileId: string) => {
+  // UNDUH BERKAS TERENKRIPSI (.enc)
+  const downloadEncryptedFile = (fileId: string) => {
     window.open(`/api/files/download/${fileId}?mode=raw`, "_blank");
   };
 
@@ -158,7 +158,7 @@ export default function FileEncryptionPage() {
             Enkripsi Berkas — ChaCha20-Poly1305
           </h1>
           <p className="text-xs sm:text-sm font-semibold text-[#777777] mt-1">
-            Enkripsi dokumen berkinerja tinggi (RFC 8439). Isi berkas terenkripsi <strong>100% amburadul / tidak dapat dibaca</strong> jika dibuka langsung, dan dapat didekripsi dengan mudah kapan saja.
+            Enkripsi dokumen berkinerja tinggi (RFC 8439). Isi berkas terenkripsi <strong>100% tidak dapat dibaca</strong> jika dibuka langsung, dan dapat didekripsi dengan mudah kapan saja.
           </p>
         </div>
 
@@ -216,11 +216,6 @@ export default function FileEncryptionPage() {
                   )}
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 text-[#555555] text-[11px] leading-relaxed">
-                  <span className="font-bold text-[#3C3C3C]">Proteksi Tanpa Password: </span>
-                  Berkas dienkripsi secara deterministik menggunakan stream cipher ChaCha20 dengan kunci master sistem dan nonce 96-bit acak. Tidak perlu password untuk mengenkripsi.
-                </div>
-
                 {encryptError && (
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-extrabold flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-500" />
@@ -242,7 +237,7 @@ export default function FileEncryptionPage() {
               </form>
             </Card>
 
-            {/* Hasil Enkripsi & Pembuktian Amburadul */}
+            {/* Hasil Enkripsi & Bukti Ciphertext */}
             <Card className="lg:col-span-6 p-6">
               <h2 className="text-base font-black text-[#3C3C3C] mb-4 flex items-center gap-2 pb-2 border-b border-gray-200">
                 <ShieldCheck className="w-5 h-5 text-[#58CC02]" />
@@ -263,12 +258,12 @@ export default function FileEncryptionPage() {
                     <p className="break-all"><strong className="font-sans text-[#777777]">SHA-256 Checksum:</strong> {encryptResult.checksumSha256}</p>
                   </div>
 
-                  {/* PRATINJAU ISI BERKAS AMBURADUL (BUKTI NYATA) */}
+                  {/* PRATINJAU ISI BERKAS TERENKRIPSI (BUKTI NYATA) */}
                   <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-200 space-y-2">
                     <div className="flex items-center justify-between text-purple-900 font-black">
                       <span className="flex items-center gap-1.5">
                         <Eye className="w-4 h-4 text-purple-600" />
-                        Bukti Isi Berkas Terenkripsi (Amburadul):
+                        Bukti Isi Berkas Terenkripsi (Ciphertext):
                       </span>
                       <Badge variant="blue">Ciphertext Biner</Badge>
                     </div>
@@ -276,21 +271,21 @@ export default function FileEncryptionPage() {
                       Jika berkas <code>.enc</code> dibuka di Notepad atau Text Editor, isinya 100% acak dan tidak terbaca seperti cuplikan di bawah:
                     </p>
                     <div className="p-2.5 bg-black/90 text-green-400 font-mono text-[10px] rounded-lg break-all select-all leading-normal">
-                      {encryptResult.amburadulHex || "53 43 45 4e 43 01 4a 8f 3c 99 1b 7e 0a 44 df 81 29 ac..."}
+                      {encryptResult.ciphertextHex || encryptResult.amburadulHex || "53 43 45 4e 43 01 4a 8f 3c 99 1b 7e 0a 44 df 81 29 ac..."}
                     </div>
                   </div>
 
-                  {/* TOMBOL UNDUH AMBURADUL */}
+                  {/* TOMBOL UNDUH .ENC */}
                   <div className="pt-2">
                     <Button
                       type="button"
                       variant="primary"
                       size="md"
-                      onClick={() => downloadAmburadul(encryptResult.fileId)}
+                      onClick={() => downloadEncryptedFile(encryptResult.fileId)}
                       className="w-full text-xs font-black shadow-md py-3"
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Unduh Berkas Terenkripsi (.enc / Isi Amburadul)
+                      Unduh Berkas Terenkripsi (.enc)
                     </Button>
                     <p className="text-[11px] text-[#777777] text-center mt-1.5">
                       Bagikan berkas <code>.enc</code> ini ke orang lain. Mereka dapat mendekripsinya di tab Dekripsi.
@@ -302,7 +297,7 @@ export default function FileEncryptionPage() {
                   <FileKey2 className="w-10 h-10 text-gray-300 mx-auto" />
                   <p className="font-bold">Belum ada berkas yang dienkripsi.</p>
                   <p className="text-[11px] max-w-xs mx-auto">
-                    Pilih berkas di sebelah kiri lalu klik tombol enkripsi untuk melihat bukti teks amburadul dan mengunduh berkas terenkripsi <code>.enc</code>.
+                    Pilih berkas di sebelah kiri lalu klik tombol enkripsi untuk melihat bukti teks terenkripsi dan mengunduh berkas terenkripsi <code>.enc</code>.
                   </p>
                 </div>
               )}
@@ -416,15 +411,15 @@ export default function FileEncryptionPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {/* Unduh Amburadul */}
+                        {/* Unduh File Terenkripsi .enc */}
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => downloadAmburadul(f.id)}
-                          title="Unduh file .enc (isinya amburadul jika dibuka di notepad)"
+                          onClick={() => downloadEncryptedFile(f.id)}
+                          title="Unduh file .enc terenkripsi"
                         >
                           <Download className="w-3.5 h-3.5 mr-1 text-purple-600" />
-                          Unduh .enc (Amburadul)
+                          Unduh .enc
                         </Button>
 
                         {/* Dekripsi & Buka Berkas Asli Langsung */}

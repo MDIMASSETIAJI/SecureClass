@@ -142,6 +142,7 @@ export async function POST(req: NextRequest) {
       algorithm: "ChaCha20-Poly1305",
       isPasswordProtected: false,
       amburadulHex,
+      ciphertextHex: amburadulHex,
       amburadulSample,
       message: "Berkas berhasil dienkripsi menggunakan ChaCha20-Poly1305 dan disimpan dengan aman.",
     });

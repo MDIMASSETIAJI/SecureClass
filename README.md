@@ -127,7 +127,7 @@ flowchart LR
     F[Berkas Asli] --> CC[ChaCha20-Poly1305]
     K[Master File Key 256-bit / Password] --> CC
     N[Unique Random Nonce 96-bit] --> CC
-    CC --> EF[Ciphertext Berkas .enc / Amburadul]
+    CC --> EF[Ciphertext Berkas .enc]
     CC --> AT[Poly1305 MAC 128-bit]
     CC --> SHA[SHA-256 Checksum]
 ```
@@ -268,7 +268,7 @@ Ngrok akan memberikan URL publik internet (misal `https://secureclass.ngrok-free
 ### F. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Tanpa Password & Dekripsi Berkas Orang Lain)
 1. Buka menu **Enkripsi Berkas (ChaCha20)** (`/file-encryption`).
 2. Unggah dokumen apa saja (PDF, DOCX, ZIP, TXT) lalu klik **"Enkripsi Berkas dengan ChaCha20-Poly1305"** (tanpa perlu mengisi password).
-3. **Isi Berkas Amburadul:** Klik tombol **"Unduh Berkas Terenkripsi (.enc / Isi Amburadul)"**. Jika berkas ini dibuka di Notepad atau aplikasi teks, isinya 100% berupa karakter acak biner tak terbaca sebagai bukti nyata enkripsi.
+3. **Unduh Berkas Terenkripsi:** Klik tombol **"Unduh Berkas Terenkripsi (.enc)"**. Jika berkas ini dibuka di Notepad atau aplikasi teks, isinya 100% berupa karakter acak biner tak terbaca sebagai bukti nyata enkripsi.
 4. **Dekripsi Berkas dari Orang Lain:** Pada tab **"Dekripsi Berkas"**, unggah berkas `.enc` yang Anda terima dari orang lain, lalu klik tombol **"Dekripsi Berkas Sekarang"**. Sistem akan otomatis mengembalikan berkas ke bentuk aslinya yang bisa dibaca normal secara instan tanpa perlu memasukkan password.
 
 ### G. Steganografi LSB (Penyisipan Pesan ke PNG)
