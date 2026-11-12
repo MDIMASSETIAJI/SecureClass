@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SessionService } from "@/lib/session";
 import { AesGcmCipher } from "@/lib/crypto/aes-gcm";
+import { VigenereCipher } from "@/lib/crypto/vigenere";
 import { BlockchainService } from "@/lib/crypto/blockchain";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
@@ -94,9 +95,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const layer1Vigenere = VigenereCipher.encrypt(plaintext, keyToUse);
+
     return NextResponse.json({
       success: true,
       messageId: message.id,
+      steps: {
+        plaintext,
+        vigenereKey: keyToUse,
+        layer1Vigenere,
+        layer2Ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        authTag: encrypted.authTag,
+        algorithm: "VIGENERE+AES-256-GCM",
+      },
       message: "Pesan terenkripsi ganda (Super Encryption) berhasil dikirim.",
     });
   } catch (error: any) {

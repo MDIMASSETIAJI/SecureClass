@@ -255,21 +255,21 @@ Ngrok akan memberikan URL publik internet (misal `https://secureclass.ngrok-free
 4. Sistem memeriksa liveness (anti-spoofing via 2D FFT, Laplacian variance, dan YCrCb chrominance) serta mengekstrak embedding ArcFace 512-dimensi.
 5. Embedding dienkripsi dengan AES-256-GCM ke database. Citra foto mentah langsung dimusnahkan dari memori.
 
-### E. Pengiriman Pesan Terenkripsi (Super Encryption: Dua Tombol Encrypt & Decrypt)
+### E. Pengiriman Pesan Terenkripsi (Super Encryption: Tombol Kirim & Visualisasi Langkah)
 1. Buka menu **Pesan Terenkripsi (Super)** (`/messaging`).
-2. **Operasi 1 — Tombol ENCRYPT:**
-   * Masukkan isi pesan dan tentukan **Kunci Enkripsi (Vigenère Key)** Anda (misal: `KRIPTO2026`).
-   * Klik tombol **"ENCRYPT (Uji)"** untuk melihat pratinjau transformasi matematis secara langsung (Layer 1 Vigenère dan Layer 2 AES-256-GCM) atau klik **"ENCRYPT & Kirim"** untuk mengirim pesan ke kontak.
-3. **Operasi 2 — Tombol DECRYPT:**
-   * Pada kotak masuk (atau tab alat dekripsi), klik tombol **"DECRYPT"**.
-   * Pengguna **wajib memasukkan kunci dekripsi** yang cocok. Jika kunci salah, dekripsi ditolak; jika benar, plaintext asli terbuka dengan status integritas Auth Tag valid.
+2. Masukkan penerima, ketik pesan asli, dan tentukan kunci Vigenère Anda.
+3. **Hanya Satu Tombol Kirim:** Klik tombol **"Kirim Pesan"** untuk mengenkripsi dan mengirim pesan.
+4. **Visualisasi Langkah Enkripsi:** Di samping formulir, sistem secara transparan menampilkan hasil matematis dari 3 tahapan enkripsi:
+   * **Langkah 1 (Pesan Asli / Plaintext):** Teks asli yang dimasukkan pengguna.
+   * **Langkah 2 (Vigenère Cipher):** Hasil substitusi polialfabetik berdasarkan kunci Vigenère.
+   * **Langkah 3 (AES-256-GCM):** Ciphertext akhir (Base64) lengkap dengan IV 96-bit dan Auth Tag 128-bit yang disimpan ke database & blockchain.
+5. Pada kotak masuk, penerima dapat menekan tombol **"Dekripsi Pesan"** untuk membaca pesan yang diterima.
 
-### F. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Dua Opsi Pembuktian)
+### F. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Tanpa Password & Dekripsi Berkas Orang Lain)
 1. Buka menu **Enkripsi Berkas (ChaCha20)** (`/file-encryption`).
-2. Unggah dokumen apa saja (PDF, DOCX, ZIP, TXT).
-3. **Opsi 1 — Proteksi Password Berkas:** Anda dapat memasukkan password pengaman berkas. Saat berkas hendak dibuka/didekripsi kembali, sistem wajib meminta password ini. Jika password salah, validasi tag Poly1305 akan menolak dekripsi.
-4. **Opsi 2 — Isi Berkas Amburadul:** Sistem menyediakan tombol **"Unduh File .enc (Isi Amburadul)"**. Jika berkas ini dibuka langsung di Notepad atau aplikasi pembaca teks, isinya 100% berupa karakter acak tak terbaca / ciphertext biner ChaCha20 murni sebagai bukti nyata enkripsi.
-5. Pada tab **Daftar & Dekripsi**, pengguna dapat memasukkan password untuk memulihkan berkas kembali ke kondisi semula.
+2. Unggah dokumen apa saja (PDF, DOCX, ZIP, TXT) lalu klik **"Enkripsi Berkas dengan ChaCha20-Poly1305"** (tanpa perlu mengisi password).
+3. **Isi Berkas Amburadul:** Klik tombol **"Unduh Berkas Terenkripsi (.enc / Isi Amburadul)"**. Jika berkas ini dibuka di Notepad atau aplikasi teks, isinya 100% berupa karakter acak biner tak terbaca sebagai bukti nyata enkripsi.
+4. **Dekripsi Berkas dari Orang Lain:** Pada tab **"Dekripsi Berkas"**, unggah berkas `.enc` yang Anda terima dari orang lain, lalu klik tombol **"Dekripsi Berkas Sekarang"**. Sistem akan otomatis mengembalikan berkas ke bentuk aslinya yang bisa dibaca normal secara instan tanpa perlu memasukkan password.
 
 ### G. Steganografi LSB (Penyisipan Pesan ke PNG)
 1. Buka menu **Steganografi LSB** (`/steganography`).

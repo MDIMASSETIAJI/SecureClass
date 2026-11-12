@@ -51,7 +51,6 @@ export async function GET(
     // Check query params
     const mode = req.nextUrl.searchParams.get("mode"); // "raw" / "encrypted"
     const infoOnly = req.nextUrl.searchParams.get("info") === "true";
-    const password = req.nextUrl.searchParams.get("password")?.trim() || "";
 
     // If client just wants metadata check
     if (infoOnly) {
@@ -61,74 +60,67 @@ export async function GET(
         originalName: fileRecord.originalName,
         originalSize: fileRecord.originalSize,
         encryptedSize: fileRecord.encryptedSize,
-        isPasswordProtected: fileRecord.isPasswordProtected,
         algorithm: fileRecord.algorithm,
         checksumSha256: fileRecord.checksumSha256,
       });
     }
 
-    // Read encrypted ciphertext buffer
-    const encryptedBuffer = fs.readFileSync(filePath);
+    // Read stored encrypted buffer
+    const rawStoredBuffer = fs.readFileSync(filePath);
 
-    // MODE 2: DOWNLOAD AMBURADUL (RAW CIPHERTEXT)
-    // Unduh berkas terenkripsi langsung (.enc) yang isinya acak / amburadul jika dibuka di text editor
+    // Ensure we have a portable .enc container for download (starts with SCENC)
+    let containerBuffer: Buffer;
+    let rawCipherBuffer: Buffer;
+    let nonceHex = fileRecord.nonce;
+    let authTagHex = fileRecord.authTag;
+    let targetFileName = fileRecord.originalName;
+
+    if (rawStoredBuffer.length >= 36 && rawStoredBuffer.subarray(0, 5).toString("utf8") === "SCENC") {
+      containerBuffer = rawStoredBuffer;
+      const unpacked = ChaChaFileCipher.unpackContainer(rawStoredBuffer);
+      rawCipherBuffer = unpacked.encryptedBuffer;
+      nonceHex = unpacked.nonceHex;
+      authTagHex = unpacked.authTagHex;
+      targetFileName = unpacked.originalName || fileRecord.originalName;
+    } else {
+      rawCipherBuffer = rawStoredBuffer;
+      containerBuffer = ChaChaFileCipher.packContainer(
+        rawStoredBuffer,
+        fileRecord.nonce,
+        fileRecord.authTag,
+        fileRecord.originalName
+      );
+    }
+
+    // MODE 1: UNDUH FILE TERENKRIPSI .ENC (ISI TEKS AMBURADUL / TIDAK DAPAT DIBACA)
     if (mode === "raw" || mode === "encrypted") {
-      const encFileName = fileRecord.originalName.endsWith(".enc")
-        ? fileRecord.originalName
-        : `${fileRecord.originalName}.enc`;
+      const encFileName = targetFileName.endsWith(".enc") ? targetFileName : `${targetFileName}.enc`;
 
-      return new NextResponse(new Uint8Array(encryptedBuffer), {
+      return new NextResponse(new Uint8Array(containerBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/octet-stream",
           "Content-Disposition": `attachment; filename="${encodeURIComponent(encFileName)}"`,
-          "Content-Length": encryptedBuffer.length.toString(),
+          "Content-Length": containerBuffer.length.toString(),
         },
       });
     }
 
-    // MODE 1: DECRYPT & OPEN FILE (PAS MAU BUKA FILE DIPASSWORD)
-    let decryptionKey = CHACHA_KEY;
-
-    if (fileRecord.isPasswordProtected) {
-      if (!password) {
-        return NextResponse.json(
-          {
-            error: "PASSWORD_REQUIRED",
-            message: "Berkas ini diproteksi password. Masukkan password berkas untuk membuka dan mendekripsi.",
-            isPasswordProtected: true,
-            fileId: fileRecord.id,
-            originalName: fileRecord.originalName,
-          },
-          { status: 401 }
-        );
-      }
-
-      decryptionKey = ChaChaFileCipher.deriveKeyFromPassword(
-        password,
-        fileRecord.passwordSalt || "",
-        CHACHA_KEY
-      );
-    }
-
-    // Decrypt using ChaCha20-Poly1305 and strictly verify Poly1305 tag
+    // MODE 2: DEKRIPSI LANGSUNG (TANPA PASSWORD)
     let decryptedBuffer: Buffer;
     try {
       decryptedBuffer = ChaChaFileCipher.decryptFile(
-        encryptedBuffer,
-        fileRecord.nonce,
-        fileRecord.authTag,
-        decryptionKey
+        rawCipherBuffer,
+        nonceHex,
+        authTagHex,
+        CHACHA_KEY
       );
     } catch (cryptoErr: any) {
       console.error("ChaCha20-Poly1305 decryption error:", cryptoErr);
-      const isPassError = fileRecord.isPasswordProtected;
       return NextResponse.json(
         {
-          error: isPassError ? "INVALID_PASSWORD" : "TAG_VERIFICATION_FAILED",
-          message: isPassError
-            ? "Password salah! Autentikasi tag Poly1305 gagal (berkas tidak dapat dibuka dengan password ini)."
-            : "Integritas berkas terkompromi! Validasi authentication tag Poly1305 gagal (berkas rusak atau telah dimodifikasi oleh pihak ketiga).",
+          error: "TAG_VERIFICATION_FAILED",
+          message: "Integritas berkas terkompromi! Validasi authentication tag Poly1305 gagal (berkas rusak atau dimanipulasi).",
         },
         { status: 400 }
       );

@@ -180,6 +180,30 @@ test("5. ChaCha20-Poly1305 File Encryption & Authentication", () => {
     /Unsupported state or unable to authenticate data/,
     "Poly1305 MAC tag must immediately reject modified file bytes"
   );
+
+  // Portable container (.enc) test: Content is unreadable and standalone unpackable
+  const magic = Buffer.from("SCENC");
+  const version = Buffer.from([1]);
+  const nonceBuf = Buffer.from(enc1.nonce, "hex");
+  const tagBuf = Buffer.from(enc1.authTag, "hex");
+  const fnBuf = Buffer.from("laporan.pdf", "utf8");
+  const fnLen = Buffer.alloc(2);
+  fnLen.writeUInt16BE(fnBuf.length, 0);
+  const container = Buffer.concat([magic, version, nonceBuf, tagBuf, fnLen, fnBuf, enc1.encrypted]);
+
+  assert.equal(container.subarray(0, 5).toString("utf8"), "SCENC");
+  assert.notEqual(container.toString("utf8"), originalFile.toString("utf8"), "Encrypted container content must be completely unreadable");
+
+  // Unpack and decrypt by another party without password
+  const uNonce = container.subarray(6, 18).toString("hex");
+  const uTag = container.subarray(18, 34).toString("hex");
+  const uFnLen = container.readUInt16BE(34);
+  const uFn = container.subarray(36, 36 + uFnLen).toString("utf8");
+  const uCipher = container.subarray(36 + uFnLen);
+  const uDecrypted = chachaDecrypt(uCipher, uNonce, uTag, key);
+
+  assert.equal(uFn, "laporan.pdf");
+  assert.deepEqual(uDecrypted, originalFile, "Other person can decrypt file back to original cleanly");
 });
 
 test("6. USB Dongle ECDSA P-256 Challenge-Response", () => {

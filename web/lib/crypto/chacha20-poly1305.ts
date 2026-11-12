@@ -92,5 +92,58 @@ export class ChaChaFileCipher {
     const decrypted = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
     return decrypted;
   }
+
+  /**
+   * Pack an encrypted file into a portable .enc container
+   * Format:
+   * [5 bytes Magic: "SCENC"]
+   * [1 byte KeyVersion]
+   * [12 bytes Nonce]
+   * [16 bytes AuthTag]
+   * [2 bytes Original Filename Length (uint16 BE)]
+   * [N bytes Original Filename (UTF-8)]
+   * [Remaining bytes: Ciphertext]
+   */
+  public static packContainer(
+    encryptedBuffer: Buffer,
+    nonceHex: string,
+    authTagHex: string,
+    originalName: string,
+    keyVersion: number = 1
+  ): Buffer {
+    const magic = Buffer.from("SCENC");
+    const version = Buffer.from([keyVersion]);
+    const nonce = Buffer.from(nonceHex, "hex");
+    const authTag = Buffer.from(authTagHex, "hex");
+    const fnBuf = Buffer.from(originalName, "utf8");
+    const fnLen = Buffer.alloc(2);
+    fnLen.writeUInt16BE(fnBuf.length, 0);
+
+    return Buffer.concat([magic, version, nonce, authTag, fnLen, fnBuf, encryptedBuffer]);
+  }
+
+  /**
+   * Unpack a portable .enc container
+   */
+  public static unpackContainer(containerBuffer: Buffer): {
+    originalName: string;
+    nonceHex: string;
+    authTagHex: string;
+    encryptedBuffer: Buffer;
+    keyVersion: number;
+  } {
+    if (containerBuffer.length < 36 || containerBuffer.subarray(0, 5).toString("utf8") !== "SCENC") {
+      throw new Error("Format berkas terenkripsi tidak valid atau bukan berkas SecureClass (.enc).");
+    }
+
+    const keyVersion = containerBuffer.readUInt8(5);
+    const nonceHex = containerBuffer.subarray(6, 18).toString("hex");
+    const authTagHex = containerBuffer.subarray(18, 34).toString("hex");
+    const fnLen = containerBuffer.readUInt16BE(34);
+    const originalName = containerBuffer.subarray(36, 36 + fnLen).toString("utf8");
+    const encryptedBuffer = containerBuffer.subarray(36 + fnLen);
+
+    return { originalName, nonceHex, authTagHex, encryptedBuffer, keyVersion };
+  }
 }
 

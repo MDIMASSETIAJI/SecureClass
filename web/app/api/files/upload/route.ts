@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const courseId = (formData.get("courseId") as string) || null;
     const title = (formData.get("title") as string) || file?.name || "Berkas Akademik";
-    const password = (formData.get("password") as string)?.trim() || "";
 
     if (!file) {
       return NextResponse.json({ error: "Berkas tidak ditemukan." }, { status: 400 });
@@ -41,38 +40,36 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    // Key derivation: if user specified password, derive key using salt + password
-    let encryptionKey = CHACHA_KEY;
-    let passwordSalt: string | null = null;
-    const isPasswordProtected = Boolean(password);
+    // Sanitize original filename to prevent path traversal
+    const safeOriginalName = path.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, "_");
 
-    if (isPasswordProtected) {
-      passwordSalt = crypto.randomBytes(16).toString("hex");
-      encryptionKey = ChaChaFileCipher.deriveKeyFromPassword(password, passwordSalt, CHACHA_KEY);
-    }
+    // Encrypt with ChaCha20-Poly1305 (Fresh unique 96-bit nonce) using System Master Key (No password needed)
+    const encryptedResult = ChaChaFileCipher.encryptFile(fileBuffer, CHACHA_KEY, 1);
 
-    // Encrypt with ChaCha20-Poly1305 (Fresh unique 96-bit nonce)
-    const encryptedResult = ChaChaFileCipher.encryptFile(fileBuffer, encryptionKey, 1);
+    // Pack into portable .enc container
+    const containerBuffer = ChaChaFileCipher.packContainer(
+      encryptedResult.encryptedBuffer,
+      encryptedResult.nonce,
+      encryptedResult.authTag,
+      safeOriginalName
+    );
 
-    // Save encrypted ciphertext to storage with random UUID
+    // Save portable container to storage with random UUID
     const storageFileName = `${crypto.randomUUID()}.enc`;
     const storagePath = path.join(UPLOAD_DIR, storageFileName);
-    fs.writeFileSync(storagePath, encryptedResult.encryptedBuffer);
+    fs.writeFileSync(storagePath, containerBuffer);
 
     // Prepare preview of the "amburadul" scrambled ciphertext (first 128 bytes)
-    const previewLength = Math.min(128, encryptedResult.encryptedBuffer.length);
-    const amburadulSample = encryptedResult.encryptedBuffer
+    const previewLength = Math.min(128, containerBuffer.length);
+    const amburadulSample = containerBuffer
       .subarray(0, previewLength)
       .toString("binary")
       .replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-    const amburadulHex = encryptedResult.encryptedBuffer
-      .subarray(0, Math.min(64, encryptedResult.encryptedBuffer.length))
+    const amburadulHex = containerBuffer
+      .subarray(0, Math.min(64, containerBuffer.length))
       .toString("hex")
       .match(/.{1,2}/g)
       ?.join(" ") || "";
-
-    // Sanitize original filename to prevent path traversal
-    const safeOriginalName = path.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, "_");
 
     // Save record to database
     const encryptedFile = await prisma.encryptedFile.create({
@@ -80,15 +77,15 @@ export async function POST(req: NextRequest) {
         originalName: safeOriginalName,
         mimeType: file.type || "application/octet-stream",
         originalSize: file.size,
-        encryptedSize: encryptedResult.encryptedBuffer.length,
+        encryptedSize: containerBuffer.length,
         storagePath: storageFileName,
         algorithm: "ChaCha20-Poly1305",
         nonce: encryptedResult.nonce,
         authTag: encryptedResult.authTag,
         keyVersion: 1,
         checksumSha256: encryptedResult.checksumSha256,
-        isPasswordProtected,
-        passwordSalt,
+        isPasswordProtected: false,
+        passwordSalt: null,
         uploadedById: session.userId,
       },
     });
@@ -143,7 +140,7 @@ export async function POST(req: NextRequest) {
       encryptedSize: encryptedResult.encryptedBuffer.length,
       checksumSha256: encryptedResult.checksumSha256,
       algorithm: "ChaCha20-Poly1305",
-      isPasswordProtected,
+      isPasswordProtected: false,
       amburadulHex,
       amburadulSample,
       message: "Berkas berhasil dienkripsi menggunakan ChaCha20-Poly1305 dan disimpan dengan aman.",
