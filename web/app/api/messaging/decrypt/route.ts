@@ -12,17 +12,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { messageId, vigenereKey, ciphertext, iv, authTag } = body;
 
-    if (!vigenereKey || typeof vigenereKey !== "string" || !vigenereKey.trim()) {
-      return NextResponse.json(
-        { error: "Kunci dekripsi (Vigenère Key) wajib dimasukkan oleh pengguna." },
-        { status: 400 }
-      );
-    }
-
-    const keyToUse = vigenereKey.trim().toUpperCase();
-
     // Mode A: Manual direct decryption (Ciphertext + IV + AuthTag + Key)
     if (!messageId && ciphertext && iv && authTag) {
+      if (!vigenereKey || typeof vigenereKey !== "string" || !vigenereKey.trim()) {
+        return NextResponse.json(
+          { error: "Kunci dekripsi (Vigenère Key) wajib dimasukkan untuk dekripsi manual." },
+          { status: 400 }
+        );
+      }
+
+      const keyToUse = vigenereKey.trim().toUpperCase();
       try {
         const plaintext = AesGcmCipher.superDecrypt(
           { ciphertext, iv, authTag },
@@ -70,21 +69,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify key against stored hint/hash if available
-    if (message.vigenereKeyHint) {
+    // Determine Vigenère key: either provided or automatically recovered from secure hint envelope
+    let keyToUse: string | null =
+      typeof vigenereKey === "string" && vigenereKey.trim()
+        ? vigenereKey.trim().toUpperCase()
+        : null;
+
+    if (!keyToUse && message.vigenereKeyHint) {
+      try {
+        const parsed = JSON.parse(message.vigenereKeyHint);
+        if (parsed.envelope) {
+          keyToUse = AesGcmCipher.decrypt(parsed.envelope, AES_KEY).toUpperCase();
+        } else if (parsed.ciphertext && parsed.iv && parsed.authTag) {
+          keyToUse = AesGcmCipher.decrypt(parsed, AES_KEY).toUpperCase();
+        }
+      } catch (err) {
+        console.error("Failed to recover auto key from envelope:", err);
+      }
+    }
+
+    // Verify key against stored hint/hash if key was manually provided
+    if (vigenereKey && message.vigenereKeyHint) {
       try {
         const parsed = JSON.parse(message.vigenereKeyHint);
         if (parsed.hash) {
-          const userKeyHash = crypto.createHash("sha256").update(keyToUse).digest("hex");
+          const userKeyHash = crypto.createHash("sha256").update(vigenereKey.trim().toUpperCase()).digest("hex");
           if (userKeyHash !== parsed.hash) {
-            return NextResponse.json(
-              { error: "Kunci dekripsi salah! Kunci yang Anda masukkan tidak cocok dengan kunci pengirim." },
-              { status: 400 }
-            );
-          }
-        } else if (parsed.ciphertext && parsed.iv && parsed.authTag) {
-          const originalKey = AesGcmCipher.decrypt(parsed, AES_KEY);
-          if (originalKey.toUpperCase() !== keyToUse) {
             return NextResponse.json(
               { error: "Kunci dekripsi salah! Kunci yang Anda masukkan tidak cocok dengan kunci pengirim." },
               { status: 400 }
@@ -94,6 +104,13 @@ export async function POST(req: NextRequest) {
       } catch {
         // Fall through to cryptographic superDecrypt
       }
+    }
+
+    if (!keyToUse) {
+      return NextResponse.json(
+        { error: "Kunci enkripsi tidak dapat dipulihkan secara otomatis." },
+        { status: 400 }
+      );
     }
 
     // Execute Super Decryption:
@@ -131,6 +148,7 @@ export async function POST(req: NextRequest) {
       success: true,
       plaintext,
       autoKey: keyToUse,
+      keyUsed: keyToUse,
       isImportant: message.isImportant,
       algorithm: message.algorithm,
       sender: message.sender,

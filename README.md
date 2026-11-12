@@ -140,8 +140,8 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | **Password Hashing** | **Argon2id** | $m=19456\text{ KB}$, $t=2$, $p=1$ | Perlindungan tahan memori (*memory-hard*) terhadap ASIC/GPU cracking dan serangan *side-channel cache-timing*. |
 | **USB Dongle Auth** | **ECDSA P-256** | Kurva NIST prime256v1, SHA-256 | Autentikasi *challenge-response*. Kunci privat tidak pernah keluar dari peramban web (*Web Crypto API*). |
-| **Pesan Akademik** | **Super Encryption** | Vigenère + AES-256-GCM | Lapisan substitusi polialfabetik klasik diperkuat enkripsi modern dengan otentikasi data terikat (AEAD). Dilengkapi tombol mandiri **ENCRYPT** dan **DECRYPT**. |
-| **Enkripsi Berkas** | **ChaCha20-Poly1305** | IETF RFC 8439, 96-bit Nonce, 128-bit Tag | Enkripsi berkas dokumen dipisahkan dari pesan teks. Dilengkapi proteksi password saat buka berkas serta opsi unduh berkas biner amburadul (`.enc`). |
+| **Pesan Akademik** | **Super Encryption** | Vigenère + AES-256-GCM | Lapisan substitusi polialfabetik klasik diperkuat enkripsi modern dengan otentikasi data terikat (AEAD). Dilengkapi tombol **Kirim Pesan** (kunci acak otomatis oleh sistem) dan visualisasi matematis 3 langkah (Pesan Asli, Vigenère, AES). |
+| **Enkripsi Berkas** | **ChaCha20-Poly1305** | IETF RFC 8439, 96-bit Nonce, 128-bit Tag | Enkripsi berkas dokumen dipisahkan dari pesan teks, mengubah isi berkas menjadi biner teracak (`.enc`), serta dilengkapi fitur dekripsi mandiri portabel tanpa password. |
 | **Data Biometrik** | **AES-256-GCM** | Kunci master biometrik 256-bit, IV 96-bit | Vektor fitur 512-dimensi disimpan dalam keadaan terenkripsi. Foto mentah (*raw image*) tidak disimpan. |
 | **Pesan Database** | **AES-256-GCM** | IV 12-byte acak, Tag 16-byte | Pesan penting/rahasia dienkripsi sebelum persistensi ke SQLite. |
 | **Steganografi** | **LSB + AES-256-GCM** | Format PNG, Magic header `SCST`, RGB bit-0 | Pesan dienkripsi AES-256-GCM terlebih dahulu sebelum disisipkan ke LSB kanal warna citra PNG. |
@@ -255,15 +255,15 @@ Ngrok akan memberikan URL publik internet (misal `https://secureclass.ngrok-free
 4. Sistem memeriksa liveness (anti-spoofing via 2D FFT, Laplacian variance, dan YCrCb chrominance) serta mengekstrak embedding ArcFace 512-dimensi.
 5. Embedding dienkripsi dengan AES-256-GCM ke database. Citra foto mentah langsung dimusnahkan dari memori.
 
-### E. Pengiriman Pesan Terenkripsi (Super Encryption: Tombol Kirim & Visualisasi Langkah)
+### E. Pengiriman Pesan Terenkripsi (Super Encryption: Kunci Otomatis & Visualisasi Langkah)
 1. Buka menu **Pesan Terenkripsi (Super)** (`/messaging`).
-2. Masukkan penerima, ketik pesan asli, dan tentukan kunci Vigenère Anda.
+2. Masukkan penerima dan ketik pesan asli. Input kunci telah ditiadakan karena **sistem secara otomatis menghasilkan dan mengisi kunci acak Vigenère** (*Random CSPRNG*) untuk menjamin kenyamanan dan keamanan kriptografis.
 3. **Hanya Satu Tombol Kirim:** Klik tombol **"Kirim Pesan"** untuk mengenkripsi dan mengirim pesan.
 4. **Visualisasi Langkah Enkripsi:** Di samping formulir, sistem secara transparan menampilkan hasil matematis dari 3 tahapan enkripsi:
    * **Langkah 1 (Pesan Asli / Plaintext):** Teks asli yang dimasukkan pengguna.
-   * **Langkah 2 (Vigenère Cipher):** Hasil substitusi polialfabetik berdasarkan kunci Vigenère.
+   * **Langkah 2 (Vigenère Cipher):** Hasil substitusi polialfabetik berdasarkan kunci acak sistem.
    * **Langkah 3 (AES-256-GCM):** Ciphertext akhir (Base64) lengkap dengan IV 96-bit dan Auth Tag 128-bit yang disimpan ke database & blockchain.
-5. Pada kotak masuk, penerima dapat menekan tombol **"Dekripsi Pesan"** untuk membaca pesan yang diterima.
+5. Pada kotak pesan masuk, penerima cukup menekan tombol **"Dekripsi Pesan"**, dan sistem secara otomatis memulihkan kunci dari amplop terenkripsi terotentikasi (*key envelope*) untuk mendekripsi pesan tanpa perlu memasukkan kunci secara manual.
 
 ### F. Enkripsi Berkas Dokumen (ChaCha20-Poly1305: Tanpa Password & Dekripsi Berkas Orang Lain)
 1. Buka menu **Enkripsi Berkas (ChaCha20)** (`/file-encryption`).

@@ -8,6 +8,16 @@ import crypto from "crypto";
 
 const AES_KEY = process.env.AES_MESSAGE_KEY || "8f2a1b9c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4";
 
+function generateRandomVigenereKey(length = 8): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const bytes = crypto.randomBytes(length);
+  let key = "";
+  for (let i = 0; i < length; i++) {
+    key += chars[bytes[i] % chars.length];
+  }
+  return key;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await SessionService.requireFullyAuthenticated();
@@ -33,14 +43,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!vigenereKey || typeof vigenereKey !== "string" || !vigenereKey.trim()) {
-      return NextResponse.json(
-        { error: "Kunci enkripsi (Vigenère Key) wajib dimasukkan oleh pengguna." },
-        { status: 400 }
-      );
-    }
-
-    const keyToUse = vigenereKey.trim().toUpperCase();
+    // Auto-generate random uppercase Vigenère key if not provided by user
+    const keyToUse =
+      typeof vigenereKey === "string" && vigenereKey.trim()
+        ? vigenereKey.trim().toUpperCase()
+        : generateRandomVigenereKey(8);
 
     // Perform Super Encryption (Layer 1: Vigenère -> Layer 2: AES-256-GCM)
     const encrypted = AesGcmCipher.superEncrypt(plaintext, keyToUse, AES_KEY, 1);

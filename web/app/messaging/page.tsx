@@ -30,7 +30,7 @@ export default function MessagingPage() {
   // Form State
   const [receiverId, setReceiverId] = useState("");
   const [plaintext, setPlaintext] = useState("");
-  const [vigenereKey, setVigenereKey] = useState("KRIPTO2026");
+  const [vigenereKey, setVigenereKey] = useState("");
   const [isImportant, setIsImportant] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
@@ -41,13 +41,23 @@ export default function MessagingPage() {
 
   // Modal Decrypt State
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
-  const [modalKey, setModalKey] = useState("");
   const [modalDecrypting, setModalDecrypting] = useState(false);
   const [modalPlaintext, setModalPlaintext] = useState<string | null>(null);
+  const [modalKeyUsed, setModalKeyUsed] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  const generateRandomKey = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let result = "";
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
 
   useEffect(() => {
     loadInbox();
+    setVigenereKey(generateRandomKey());
   }, []);
 
   const loadInbox = () => {
@@ -69,15 +79,6 @@ export default function MessagingPage() {
       });
   };
 
-  const generateRandomKey = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let result = "";
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setVigenereKey(result);
-  };
-
   // Live calculation for Layer 1 Vigenère
   const liveVigenerePreview = React.useMemo(() => {
     if (!plaintext.trim() || !vigenereKey.trim()) return "";
@@ -93,10 +94,7 @@ export default function MessagingPage() {
     e.preventDefault();
     if (!receiverId || !plaintext.trim()) return;
 
-    if (!vigenereKey.trim()) {
-      alert("Kunci enkripsi Vigenère wajib dimasukkan sebelum mengirim pesan!");
-      return;
-    }
+    const keyToUse = vigenereKey.trim() || generateRandomKey();
 
     setSending(true);
     setSendSuccess(false);
@@ -109,7 +107,7 @@ export default function MessagingPage() {
         body: JSON.stringify({
           receiverId,
           plaintext,
-          vigenereKey: vigenereKey.trim().toUpperCase(),
+          vigenereKey: keyToUse,
           isImportant,
         }),
       });
@@ -123,7 +121,7 @@ export default function MessagingPage() {
       } else {
         setLastSentSteps({
           plaintext,
-          vigenereKey: vigenereKey.trim().toUpperCase(),
+          vigenereKey: keyToUse,
           layer1Vigenere: liveVigenerePreview,
           layer2Ciphertext: "Terenkripsi AES-256-GCM (Tersimpan aman di DB & Blockchain)",
           iv: "Random 96-bit CSPRNG",
@@ -133,6 +131,7 @@ export default function MessagingPage() {
 
       setPlaintext("");
       setIsImportant(false);
+      setVigenereKey(generateRandomKey()); // Acak kunci baru secara otomatis untuk pesan berikutnya
       setSendSuccess(true);
       setTimeout(() => setSendSuccess(false), 4000);
       loadInbox();
@@ -145,23 +144,19 @@ export default function MessagingPage() {
 
   const openDecryptModal = (msg: any) => {
     setSelectedMessage(msg);
-    setModalKey("");
     setModalError(null);
     setModalPlaintext(null);
+    setModalKeyUsed(null);
   };
 
-  const handleModalDecryptSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleModalDecryptSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedMessage) return;
-
-    if (!modalKey.trim()) {
-      setModalError("Kunci Vigenère wajib dimasukkan untuk membuka pesan ini!");
-      return;
-    }
 
     setModalDecrypting(true);
     setModalError(null);
     setModalPlaintext(null);
+    setModalKeyUsed(null);
 
     try {
       const res = await fetch("/api/messaging/decrypt", {
@@ -169,7 +164,6 @@ export default function MessagingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messageId: selectedMessage.id,
-          vigenereKey: modalKey.trim().toUpperCase(),
         }),
       });
 
@@ -177,6 +171,7 @@ export default function MessagingPage() {
       if (!res.ok) throw new Error(data.error || "Gagal mendekripsi pesan.");
 
       setModalPlaintext(data.plaintext);
+      setModalKeyUsed(data.autoKey || data.keyUsed || "Sistem Otomatis");
       loadInbox();
     } catch (err: any) {
       setModalError(err.message);
@@ -263,33 +258,19 @@ export default function MessagingPage() {
                   />
                 </div>
 
-                {/* KUNCI VIGENERE */}
-                <div className="p-3.5 rounded-xl bg-emerald-50/80 border-2 border-emerald-300 space-y-1.5">
+                {/* KUNCI VIGENERE OTOMATIS OLEH SISTEM (TANPA INPUT) */}
+                <div className="p-3.5 rounded-xl bg-emerald-50/80 border-2 border-emerald-300 space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="uppercase text-emerald-900 font-black flex items-center gap-1.5">
                       <KeyRound className="w-4 h-4 text-[#58CC02]" />
-                      Kunci Vigenère *
+                      Kunci Vigenère Otomatis
                     </label>
-                    <button
-                      type="button"
-                      onClick={generateRandomKey}
-                      className="text-[11px] text-[#58CC02] hover:underline font-bold flex items-center gap-1"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Acak Kunci
-                    </button>
+                    <Badge variant="blue" className="font-mono font-black text-xs tracking-wider">
+                      {vigenereKey || "RANDOM CSPRNG"}
+                    </Badge>
                   </div>
-
-                  <input
-                    type="text"
-                    required
-                    value={vigenereKey}
-                    onChange={(e) => setVigenereKey(e.target.value.toUpperCase())}
-                    placeholder="Contoh: KRIPTO2026"
-                    className="w-full px-3 py-2 rounded-lg border-2 border-emerald-400 font-mono font-black text-[#3C3C3C] tracking-wider uppercase focus:border-[#58CC02] focus:outline-none"
-                  />
                   <p className="text-[11px] text-emerald-800 font-semibold">
-                    Kunci ini digunakan untuk substitusi polialfabetik pada Langkah 2.
+                    Kunci substitusi diisi acak otomatis oleh sistem untuk setiap pesan baru.
                   </p>
                 </div>
 
@@ -539,23 +520,9 @@ export default function MessagingPage() {
                   </div>
                 )}
 
-                <div className="p-3.5 bg-emerald-50 rounded-xl border-2 border-emerald-300 space-y-1.5">
-                  <label className="uppercase text-emerald-900 font-black flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4 text-[#58CC02]" />
-                    Masukkan Kunci Vigenère *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={modalKey}
-                    onChange={(e) => setModalKey(e.target.value.toUpperCase())}
-                    placeholder="Contoh: KRIPTO2026"
-                    className="w-full px-3 py-2 rounded-lg border-2 border-emerald-400 font-mono font-black text-[#3C3C3C] uppercase tracking-wider focus:border-[#58CC02] focus:outline-none"
-                  />
-                  <p className="text-[11px] text-emerald-800 font-semibold">
-                    Kunci dibutuhkan untuk membalikkan substitusi Vigenère pada Layer 1.
-                  </p>
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] font-semibold flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span>Kunci Vigenère acak dipulihkan secara otomatis oleh sistem melalui envelope terotentikasi.</span>
                 </div>
 
                 <Button
@@ -582,6 +549,10 @@ export default function MessagingPage() {
                 </div>
 
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1.5 text-[11px] font-semibold text-[#555555]">
+                  <div className="flex justify-between items-center">
+                    <span>Kunci Acak Sistem:</span>
+                    <Badge variant="blue" className="font-mono font-black">{modalKeyUsed}</Badge>
+                  </div>
                   <div className="flex justify-between items-center">
                     <span>Metode:</span>
                     <span className="font-bold text-[#3C3C3C]">Vigenère + AES-256-GCM</span>
