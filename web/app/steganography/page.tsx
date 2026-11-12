@@ -24,7 +24,6 @@ export default function SteganographyPage() {
   const [carrierImage, setCarrierImage] = useState<File | null>(null);
   const [carrierPreview, setCarrierPreview] = useState<string | null>(null);
   const [secretMessage, setSecretMessage] = useState("");
-  const [customPassphrase, setCustomPassphrase] = useState("");
   const [encoding, setEncoding] = useState(false);
   const [encodeSuccess, setEncodeSuccess] = useState(false);
   const [encodeError, setEncodeError] = useState<string | null>(null);
@@ -32,7 +31,6 @@ export default function SteganographyPage() {
   // Decode state
   const [stegoImage, setStegoImage] = useState<File | null>(null);
   const [stegoPreview, setStegoPreview] = useState<string | null>(null);
-  const [decodePassphrase, setDecodePassphrase] = useState("");
   const [decoding, setDecoding] = useState(false);
   const [decodedMessage, setDecodedMessage] = useState<string | null>(null);
   const [decodeError, setDecodeError] = useState<string | null>(null);
@@ -73,7 +71,6 @@ export default function SteganographyPage() {
       const formData = new FormData();
       formData.append("image", carrierImage);
       formData.append("secretMessage", secretMessage);
-      if (customPassphrase) formData.append("passphrase", customPassphrase);
 
       const res = await fetch("/api/stego/encode", {
         method: "POST",
@@ -113,7 +110,6 @@ export default function SteganographyPage() {
     try {
       const formData = new FormData();
       formData.append("image", stegoImage);
-      if (decodePassphrase) formData.append("passphrase", decodePassphrase);
 
       const res = await fetch("/api/stego/decode", {
         method: "POST",
@@ -170,7 +166,7 @@ export default function SteganographyPage() {
             <Card className="md:col-span-7 p-6">
               <h2 className="text-base font-black text-[#3C3C3C] mb-4 flex items-center gap-2">
                 <Layers className="w-5 h-5 text-[#58CC02]" />
-                Penyisipan Pesan Rahasia ke Citra PNG
+                Penyisipan Pesan Rahasia ke Citra
               </h2>
 
               {encodeSuccess && (
@@ -190,7 +186,7 @@ export default function SteganographyPage() {
               <form onSubmit={handleEncode} className="space-y-4 text-xs font-bold">
                 <div>
                   <label className="block uppercase text-[#777777] mb-1">
-                    Pilih Citra Pembawa (Carrier PNG)
+                    Pilih Citra Pembawa
                   </label>
                   <input
                     type="file"
@@ -199,12 +195,6 @@ export default function SteganographyPage() {
                     onChange={handleCarrierSelect}
                     className="text-xs font-semibold text-[#3C3C3C]"
                   />
-                  <p className="text-[10px] text-[#777777] mt-1 font-semibold">
-                    * Format wajib PNG (lossless). Kompresi JPEG akan merusak bit LSB.
-                  </p>
-                  <p className="text-[10px] text-[#58CC02] mt-0.5 font-bold">
-                    💡 Rekomendasi Steganalisis: Gunakan foto bertekstur alami (pemandangan, dedaunan) agar variasi bit LSB menyatu alami dan ukuran file tetap konsisten.
-                  </p>
                 </div>
 
                 <div>
@@ -217,19 +207,6 @@ export default function SteganographyPage() {
                     value={secretMessage}
                     onChange={(e) => setSecretMessage(e.target.value)}
                     placeholder="Tuliskan pesan akademik rahasia di sini..."
-                    className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-300 font-bold text-[#3C3C3C] focus:border-[#58CC02] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase text-[#777777] mb-1">
-                    Passphrase Tambahan (Opsional)
-                  </label>
-                  <input
-                    type="password"
-                    value={customPassphrase}
-                    onChange={(e) => setCustomPassphrase(e.target.value)}
-                    placeholder="Biarkan kosong untuk menggunakan Kunci Master Stego"
                     className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-300 font-bold text-[#3C3C3C] focus:border-[#58CC02] focus:outline-none"
                   />
                 </div>
@@ -298,7 +275,7 @@ export default function SteganographyPage() {
               <form onSubmit={handleDecode} className="space-y-4 text-xs font-bold">
                 <div>
                   <label className="block uppercase text-[#777777] mb-1">
-                    Pilih Citra Stego (PNG)
+                    Pilih Citra Stego
                   </label>
                   <input
                     type="file"
@@ -306,19 +283,6 @@ export default function SteganographyPage() {
                     accept="image/png"
                     onChange={handleStegoSelect}
                     className="text-xs font-semibold text-[#3C3C3C]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase text-[#777777] mb-1">
-                    Passphrase Dekripsi (Jika diset saat encoding)
-                  </label>
-                  <input
-                    type="password"
-                    value={decodePassphrase}
-                    onChange={(e) => setDecodePassphrase(e.target.value)}
-                    placeholder="Kosongkan jika menggunakan Kunci Master Stego"
-                    className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-300 font-bold text-[#3C3C3C] focus:border-[#58CC02] focus:outline-none"
                   />
                 </div>
 
