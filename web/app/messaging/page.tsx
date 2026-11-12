@@ -14,7 +14,6 @@ import {
   KeyRound,
   AlertTriangle,
   CheckCircle2,
-  Shield,
   Star,
   Sparkles,
   Copy,
@@ -196,15 +195,6 @@ export default function MessagingPage() {
           <p className="text-xs sm:text-sm font-semibold text-[#777777] mt-1">
             Pengiriman pesan berkeamanan tinggi dengan enkripsi bertingkat: <strong>Vigenère Cipher (Klasik)</strong> dipadukan dengan <strong>AES-256-GCM (Modern AEAD)</strong>.
           </p>
-        </div>
-
-        {/* Security Banner */}
-        <div className="p-4 rounded-2xl bg-white border-2 border-gray-200 text-xs text-[#777777] flex items-start gap-3">
-          <Shield className="w-5 h-5 text-[#58CC02] flex-shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <span className="font-black text-[#3C3C3C]">Alur Super Encryption: </span>
-            Setiap pesan yang Anda kirim akan melalui dua lapis proteksi kriptografi secara berurutan. Di sebelah kanan, Anda dapat melihat rincian langkah transformasi dari teks asli hingga menjadi ciphertext terenkripsi final.
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -404,7 +394,7 @@ export default function MessagingPage() {
                 <Layers className="w-12 h-12 text-gray-300 mx-auto" />
                 <p className="font-bold text-[#3C3C3C]">Langkah Enkripsi Akan Muncul di Sini</p>
                 <p className="text-[11px] max-w-sm mx-auto">
-                  Ketik pesan pada formulir di sebelah kiri. Sistem akan langsung memperlihatkan langkah-langkah enkripsi: dari <strong>Pesan Asli</strong> $\rightarrow$ <strong>Vigenère</strong> $\rightarrow$ <strong>AES-256-GCM</strong>.
+                  Ketik pesan pada formulir di sebelah kiri. Sistem akan langsung memperlihatkan langkah-langkah enkripsi: dari <strong>Pesan Asli</strong> → <strong>Vigenère</strong> → <strong>AES-256-GCM</strong>.
                 </p>
               </div>
             )}
